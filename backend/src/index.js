@@ -1,4 +1,5 @@
 const express=require("express");
+const cors=require("cors");
 const jwt=require('jsonwebtoken');
 const z=require('zod');
 const {JWT_SECRET, MONGO_URI}=require('./secrets.js');
@@ -17,6 +18,11 @@ mongoose.connect(MONGO_URI)
     console.error(err);
   });
 
+app.use(cors({
+  origin: "http://localhost:5173",
+  allowedHeaders: ["Content-Type", "token"]
+}));
+
 app.use(express.json());
 
 app.use('/users', userRouter);  //user signup and signin  
@@ -25,11 +31,6 @@ app.use('/wallet', walletRouter);  //user wallet add money route
 
 app.use('/admin', adminRouter);
 
-
-
-
 app.use('/me', profileRouter);  //get user information
-
-
 
 app.listen(3000);
