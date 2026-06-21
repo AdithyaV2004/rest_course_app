@@ -1,14 +1,21 @@
 const express=require("express");
 const jwt=require('jsonwebtoken');
 const z=require('zod');
-const JWT_SECRET=require('./secrets.js');
-const {users, courses}=require('./db/db.js');
+const {JWT_SECRET, MONGO_URI}=require('./secrets.js');
 const userRouter=require('./routes/userRoutes.js')
 const walletRouter=require('./routes/walletRoutes.js')
 const profileRouter=require('./routes/profileRouter.js')
 const adminRouter=require('./routes/adminRoutes.js')
+const mongoose=require('mongoose')
 
 const app=express();
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+  })
+  .catch((err) => {
+    console.error(err);
+  });
 
 app.use(express.json());
 

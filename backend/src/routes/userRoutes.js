@@ -5,7 +5,6 @@ const getCourseController=require('../controller/getCourseController.js');
 const purchaseController=require('../controller/purchaseController.js');
 const auth = require('./authRouter.js');
 const { success } = require('zod');
-const {courses}=require('../db/db.js')
 
 userRouter.post('/signup', signUpController);
 
@@ -17,19 +16,26 @@ userRouter.get('/courses', getCourseController);
 
 userRouter.post('/courses/:courseId/purchases', purchaseController);
 
-userRouter.get('/purchased', (req, res)=>{
+userRouter.get('/purchased', async (req, res)=>{
     const user=req.user;
     if(user.role!='user'){
-        res.status(401).json({
+        return res.status(401).json({
             success:false,
             message:"No Authorisation"
         })
     }
-    const purchasedCourses=courses.filter(course =>user.purchasedCourses.includes(course.id));
-    res.json({
-        success:true,
-        courses:purchasedCourses
-    })
+    try{
+        await user.populate('purchasedCourses');
+        res.json({
+            success:true,
+            courses:user.purchasedCourses
+        })
+    } catch(err){
+        res.status(500).json({
+            success:false,
+            message:"Server error"
+        })
+    }
 })
 
 module.exports=userRouter;

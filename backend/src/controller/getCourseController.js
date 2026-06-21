@@ -1,9 +1,18 @@
-const {courses}=require('../db/db')
-function getCourseController(req, res){
-    res.json({
-        success:true,
-        courses:courses
-    })
+const {Course}=require('../db/db')
+
+async function getCourseController(req, res){
+    try{
+        const courses=await Course.find();
+        res.json({
+            success:true,
+            courses:courses
+        })
+    } catch(err){
+        res.status(500).json({
+            success:false,
+            message:"Server error"
+        })
+    }
 }
 
 module.exports=getCourseController;

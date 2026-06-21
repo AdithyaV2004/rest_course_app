@@ -4,7 +4,7 @@ const moneySchema=z.object({
     amount:z.number()
 })
 
-function walletController(req, res){
+async function walletController(req, res){
     const result=moneySchema.safeParse(req.body);
     if(!result.success){
         return res.status(401).json({
@@ -18,12 +18,20 @@ function walletController(req, res){
             message:"Not Authorised"
         })
     }
-    const amt=result.data.amount;
-    req.user.wallet+=amt;
-    res.json({
-        success:true,
-        wallet:req.user.wallet
-    })
+    try{
+        const amt=result.data.amount;
+        req.user.wallet+=amt;
+        await req.user.save();
+        res.json({
+            success:true,
+            wallet:req.user.wallet
+        })
+    } catch(err){
+        res.status(500).json({
+            success:false,
+            message:"Server error"
+        })
+    }
 }
 
 module.exports=walletController

@@ -1,7 +1,5 @@
-const {courses, users}=require('../db/db');
+const {Course}=require('../db/db');
 const z=require('zod');
-
-count=1;
 
 const courseSchema=z.object({
   title: z.string().min(1),
@@ -9,10 +7,10 @@ const courseSchema=z.object({
   price: z.number().min(1)
 });
 
-function courseController(req, res){
+async function courseController(req, res){
     const result=courseSchema.safeParse(req.body);
     if(!result.success){
-        res.status(401).json({
+        return res.status(401).json({
             success:false,
             message:"Invalid Request"
         })
@@ -24,36 +22,42 @@ function courseController(req, res){
             message:"Not Authorised"
         })
     }
-    const creatorCourses=courses.filter(x=>x.createdBy==user.id);
-    const dup=creatorCourses.find(x=>x.title==result.data.title);
-    if(dup){
+
+    try{
+        const dup=await Course.findOne({createdBy:user._id, title:result.data.title});
+        if(dup){
+            return res.json({
+                success:false,
+                message:"Course already exists"
+            })
+        }
+
+        const newCourse=await Course.create({
+            title:result.data.title,
+            description:result.data.description,
+            price:result.data.price,
+            createdBy:user._id
+        });
+
         return res.json({
+            success:true,
+            message:"Course Created",
+            courseId:newCourse._id
+        })
+    } catch(err){
+        res.status(500).json({
             success:false,
-            message:"Course already exists"
+            message:"Server error"
         })
     }
-
-    courses.push({
-        id:`course_${count}`,
-        title:result.data.title,
-        description:result.data.description,
-        price:result.data.price,
-        createdBy:user.id
-    });
-
-    return res.json({
-        success:true,
-        message:"Course Created",
-        courseId:`course_${count++}`
-    })
 }
 
 
 
-function updateCourseController(req, res){
+async function updateCourseController(req, res){
     const result=courseSchema.safeParse(req.body);
     if(!result.success){
-        res.status(401).json({
+        return res.status(401).json({
             success:false,
             message:"Invalid Request"
         })
@@ -67,32 +71,39 @@ function updateCourseController(req, res){
     }
     const courseId=req.params.courseId;
 
-    const creatorCourses=courses.filter(x=>x.createdBy==user.id);
-    const updateCourse=creatorCourses.find(x=>x.id==courseId);
-    if(!updateCourse){
-        return res.status(401).json({
-            success:false,
-            message:"Course not found"
-        })
-    }
-    const dup=creatorCourses.find(x=>x.title==result.data.title);
-    if(dup){
-        return res.json({
-            success:false,
-            message:"Course name already exists"
-        })
-    }
-    updateCourse.title=result.data.title;
-    updateCourse.description=result.data.description;
-    updateCourse.price=result.data.price;
+    try{
+        const updateCourse=await Course.findOne({_id:courseId, createdBy:user._id});
+        if(!updateCourse){
+            return res.status(401).json({
+                success:false,
+                message:"Course not found"
+            })
+        }
+        const dup=await Course.findOne({createdBy:user._id, title:result.data.title, _id:{$ne:courseId}});
+        if(dup){
+            return res.json({
+                success:false,
+                message:"Course name already exists"
+            })
+        }
+        updateCourse.title=result.data.title;
+        updateCourse.description=result.data.description;
+        updateCourse.price=result.data.price;
+        await updateCourse.save();
 
-    return res.json({
-        success:true,
-        message:"Course Updated"
-    })
+        return res.json({
+            success:true,
+            message:"Course Updated"
+        })
+    } catch(err){
+        res.status(500).json({
+            success:false,
+            message:"Server error"
+        })
+    }
 }
 
-function displayCourseController(req, res){
+async function displayCourseController(req, res){
     const user=req.user;
     if(user.role!="admin"){
         return res.status(401).json({
@@ -100,14 +111,20 @@ function displayCourseController(req, res){
             message:"Not Authorised"
         })
     }
-    const courseId=req.params.courseId;
 
-    const creatorCourses=courses.filter(x=>x.createdBy==user.id);
+    try{
+        const creatorCourses=await Course.find({createdBy:user._id});
 
-    return res.json({
-        success:true,
-        courses:creatorCourses.length>0?creatorCourses:"No course found"
-    })
+        return res.json({
+            success:true,
+            courses:creatorCourses.length>0?creatorCourses:"No course found"
+        })
+    } catch(err){
+        res.status(500).json({
+            success:false,
+            message:"Server error"
+        })
+    }
 }
 
 module.exports={courseController, updateCourseController, displayCourseController};
